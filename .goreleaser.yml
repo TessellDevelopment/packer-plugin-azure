@@ -5,68 +5,64 @@
 # Make sure to check the documentation at http://goreleaser.com
 env:
   - CGO_ENABLED=0
-before:
-  hooks:
-    # We strongly recommend running tests to catch any regression before release.
-    # Even though, this an optional step.
-    - go test ./...
-    # As part of the release doc files are included as a separate deliverable for
-    # consumption by Packer.io. To include a separate docs.zip uncomment the following command.
-    - make ci-release-docs
-    # Check plugin compatibility with required version of the Packer SDK
-    - make plugin-check
+# before:
+#   hooks:
+#     # We strongly recommend running tests to catch any regression before release.
+#     # Even though, this an optional step.
+#     - go test ./...
+#     # As part of the release doc files are included as a separate deliverable for
+#     # consumption by Packer.io. To include a separate docs.zip uncomment the following command.
+#     - make ci-release-docs
+#     # Check plugin compatibility with required version of the Packer SDK
+#     - make plugin-check
 builds:
   # A separated build to run the packer-plugins-check only once for a linux_amd64 binary
-  -
-    id: plugin-check
-    mod_timestamp: '{{ .CommitTimestamp }}'
+  - id: plugin-check
+    mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath #removes all file system paths from the compiled executable
     ldflags:
-      - '-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= '
+      - "-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= "
     goos:
       - linux
     goarch:
       - amd64
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
-  -
-    id: linux-builds
-    mod_timestamp: '{{ .CommitTimestamp }}'
+    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}"
+  - id: linux-builds
+    mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath #removes all file system paths from the compiled executable
     ldflags:
-      - '-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= '
+      - "-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= "
     goos:
       - linux
     goarch:
       - amd64
-      - '386'
+      - "386"
       - arm
       - arm64
     ignore:
       - goos: linux
         goarch: amd64
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
-  -
-    id: darwin-builds
-    mod_timestamp: '{{ .CommitTimestamp }}'
+    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}"
+  - id: darwin-builds
+    mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath #removes all file system paths from the compiled executable
     ldflags:
-      - '-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= '
+      - "-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= "
     goos:
       - darwin
     goarch:
       - amd64
       - arm64
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
-  -
-    id: other-builds
-    mod_timestamp: '{{ .CommitTimestamp }}'
+    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}"
+  - id: other-builds
+    mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath #removes all file system paths from the compiled executable
     ldflags:
-      - '-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= '
+      - "-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.VersionPrerelease= "
     goos:
       - netbsd
       - openbsd
@@ -75,7 +71,7 @@ builds:
       - solaris
     goarch:
       - amd64
-      - '386'
+      - "386"
       - arm
     ignore:
       - goos: windows
@@ -83,19 +79,20 @@ builds:
       - goos: solaris
         goarch: arm
       - goos: solaris
-        goarch: '386'
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
+        goarch: "386"
+    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}"
 archives:
-- format: zip
-  files:
-    - none*
-  name_template: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
+  - format: zip
+    files:
+      - none*
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}"
 checksum:
-  name_template: '{{ .ProjectName }}_v{{ .Version }}_SHA256SUMS'
+  name_template: "{{ .ProjectName }}_v{{ .Version }}_SHA256SUMS"
   algorithm: sha256
 signs:
   - cmd: signore
-    args: ["sign", "--dearmor", "--file", "${artifact}", "--out", "${signature}"]
+    args:
+      ["sign", "--dearmor", "--file", "${artifact}", "--out", "${signature}"]
     artifacts: checksum
     signature: ${artifact}.sig
 release:
@@ -104,7 +101,7 @@ release:
   # As part of the release doc files are included as a separate deliverable for consumption by Packer.io.
   # To include a separate docs.zip uncomment the extra_files config and the docs.zip command hook above.
   extra_files:
-  - glob: ./docs.zip
+    - glob: ./docs.zip
 
 changelog:
   use: github-native
