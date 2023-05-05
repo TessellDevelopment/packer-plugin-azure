@@ -1,11 +1,8 @@
-# Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
-
 # This GitHub action can publish assets for release when a tag is created.
 # Currently its setup to run on any tag that matches the pattern "v*" (ie. v0.1.0).
 #
-# This uses an action (hashicorp/ghaction-import-gpg) that assumes you set your
-# private key in the `GPG_PRIVATE_KEY` secret and passphrase in the `GPG_PASSPHRASE`
+# This uses an action (paultyng/ghaction-import-gpg) that assumes you set your
+# private key in the `GPG_PRIVATE_KEY` secret and passphrase in the `PASSPHRASE`
 # secret. If you would rather own your own GPG handling, please fork this action
 # or use an alternative one for key handling.
 #
@@ -17,72 +14,37 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
-permissions:
-  contents: write
-  packages: read
+      - "v*"
 jobs:
-  get-go-version:
-    runs-on: ubuntu-latest
-    outputs:
-      go-version: ${{ steps.get-go-version.outputs.go-version }}
-    steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
-      - name: 'Determine Go version'
-        id: get-go-version
-        run: |
-          echo "Found Go $(cat .go-version)"
-          echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
   goreleaser:
-    needs:
-      - get-go-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        uses: actions/checkout@v2
       - name: Unshallow
         run: git fetch --prune --unshallow
+
       - name: Set up Go
-        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ needs.get-go-version.outputs.go-version }}
+
       - name: Describe plugin
         id: plugin_describe
-        run: echo "api_version=$(go run . describe | jq -r '.api_version')" >> "$GITHUB_OUTPUT"
+        run: echo "::set-output name=api_version::$(go run . describe | jq -r '.api_version')"
 
-      - name: Login to docker
-        uses: docker/login-action@v2.1.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          registry: ghcr.io
-
-      - name: login to ghcr, copy from image
-        shell: bash
-        run: |
-          docker pull ghcr.io/hashicorp/signore:v0
-          CONTAINER_ID=$(docker create ghcr.io/hashicorp/signore:v0)
-          docker cp $CONTAINER_ID:/usr/bin/signore /usr/local/bin/signore
-          docker rm -f $CONTAINER_ID
-
-      - name: template signore config
-        shell: bash
-        run: |
-          mkdir -p ~/.signore || true
-          touch ~/.signore/config.yaml || true
-          [ -n "${{ secrets.DOCKER_USERNAME }}" ] && echo "signer: ${{ secrets.DOCKER_USERNAME }}" >> ~/.signore/config.yaml || true
-      - id: get-version
-        shell: bash
-        run: echo "installed-version=$(signore version)" >> $GITHUB_OUTPUT
-
+      - name: Import GPG key
+        id: import_gpg
+        uses: paultyng/ghaction-import-gpg@v2.1.0
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          PASSPHRASE: ${{ secrets.PASSPHRASE }}
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b # v4.2.0
+        uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: release --rm-dist
         env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           API_VERSION: ${{ steps.plugin_describe.outputs.api_version }}
-          SIGNORE_CLIENT_ID: ${{ secrets.SIGNORE_CLIENT_ID }}
-          SIGNORE_CLIENT_SECRET: ${{ secrets.SIGNORE_CLIENT_SECRET }}
-          SIGNORE_SIGNER: ${{ secrets.SIGNORE_SIGNER }}
